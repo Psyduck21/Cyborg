@@ -8,17 +8,31 @@ class Mod(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(aliases=['pmuser'])
-    @commands.guild_only()
+    @commands.command(aliases=['pmuser'], help="Dm the user which is mentioned.")
     @commands.has_permissions(manage_messages=True)
-    async def DMuser(self, ctx, user: discord.User, *, msg):
+    async def dmuser(self, ctx, user: discord.User, *, msg):
         try:
-            await user.send(f'**{ctx.message.author}** has a message for you, \n {msg}')
+            await user.send(f'**{ctx.message.author}** has a message for you, \n `{msg}`')
+            await ctx.send("Done!")
 
         except:
             await ctx.send(f'The user has his/her DMs turned off.')
 
-    @commands.command(aliases=['clearuser'])
+    @dmuser.error
+    async def dm_error(self, ctx, error):
+        if isinstance(error, commands.MissingRequiredArgument):
+            embed = discord.Embed(description=f'{ctx.author.mention}Please mention the user.',
+                                  colour=ctx.author.colour
+                                  )
+            await ctx.send(embed=embed, delete_after=10)
+        if isinstance(error, commands.MissingPermissions):
+            embed = discord.Embed(
+                description=f"{ctx.message.author.mention} :x: You need `manage_messagesr` permission to use this command.",
+                colour=ctx.author.colour)
+            await ctx.send(embed=embed, delete_after=10)
+
+
+    @commands.command(aliases=['clearuser'], description="Clear messages of particular user in a channel")
     @commands.guild_only()
     @commands.has_permissions(manage_messages=True)
     async def purgeuser(self, ctx, user: discord.Member,
@@ -47,6 +61,19 @@ class Mod(commands.Cog):
             return await ctx.send(embed=embed, delete_after=10)
         log_channel = self.bot.get_channel(id=r)
         await log_channel.send(embed=embed)
+
+    @purgeuser.error
+    async def purge_error(self, ctx, error):
+        if isinstance(error, commands.MissingRequiredArgument):
+            embed = discord.Embed(description=f'{ctx.author.mention}Please mention the user.',
+                                  colour=ctx.author.colour
+                                  )
+            await ctx.send(embed=embed, delete_after=10)
+        if isinstance(error, commands.MissingPermissions):
+            embed = discord.Embed(
+                description=f"{ctx.message.author.mention} :x: You need `manage_messagesr` permission to use this command.",
+                colour=ctx.author.colour)
+            await ctx.send(embed=embed, delete_after=10)
 
     @commands.command(name='ban', help='use to ban members.')
     @commands.guild_only()
@@ -144,7 +171,7 @@ class Mod(commands.Cog):
 
             return await ctx.send(embed=embed, delete_after=10)
 
-        log_channel = ctx.guild.get_channel(r[0])
+        log_channel = self.bot.get_channel(id=r)
 
         embed = discord.Embed(title="Member Kicked",
                               colour=ctx.author.colour)
@@ -193,7 +220,7 @@ class Mod(commands.Cog):
                     await ctx.send(embed=embed, delete_after=10)  # mentioning user which was unbanned
                     return
 
-                log_channel = ctx.guild.get_channel(r[0])
+                log_channel = self.bot.get_channel(id=r)
                 await log_channel.send(embed=embed)  # mentioning user which was unbanned
 
     @unban.error
@@ -215,6 +242,18 @@ class Mod(commands.Cog):
         if role not in guild.roles:
             await ctx.send("You have not setup mute command. to do so use **$setup**")
         else:
+            r = await self.bot.db.fetchval(f"SELECT channel_id FROM logchannel WHERE guild_id = {ctx.guild.id}")
+            if not r:
+                await member.edit(roles=[role])
+                embed = discord.Embed(title="Member Muted",
+                                      colour=ctx.author.colour)
+                embed.add_field(name="Member", value=member.display_name, inline=False)
+                embed.add_field(name="Actioned By", value=ctx.author.name, inline=False)
+                embed.add_field(name="Reason", value=reason, inline=False)
+                embed.timestamp = datetime.utcnow()
+                await ctx.send(embed=embed, delete_after=10)
+                return
+
             await member.edit(roles=[role])
             embed = discord.Embed(title="Member Muted",
                                   colour=ctx.author.colour)
@@ -223,12 +262,7 @@ class Mod(commands.Cog):
             embed.add_field(name="Reason", value=reason, inline=False)
             embed.timestamp = datetime.utcnow()
 
-            r = await self.bot.db.fetchval(f"SELECT channel_id FROM logchannel WHERE guild_id = {ctx.guild.id}")
-            if not r:
-                await ctx.send(embed=embed, delete_after=10)
-                return
-
-            log_channel = ctx.guild.get_channel(r[0])
+            log_channel = self.bot.get_channel(id=r)
             await log_channel.send(embed=embed)
 
     @commands.command()
@@ -246,7 +280,7 @@ class Mod(commands.Cog):
             await ctx.send(embed=embed, delete_after=10)
             return
 
-        log_channel = ctx.guild.get_channel(r[0])
+        log_channel = self.bot.get_channel(id=r)
         await log_channel.send(embed=embed)
 
     @mute.error
@@ -289,15 +323,60 @@ class Mod(commands.Cog):
 
     @commands.command(name="role", description='Gives role to user.')
     async def give_role(self, ctx, member: discord.Member, *, role: discord.Role):
+
         if role not in member.roles:
             await member.add_roles(role)
-            await ctx.send(f"{member.mention} was given role {role.mention}.")
+            r = await self.bot.db.fetchval(f"SELECT channel_id FROM logchannel WHERE guild_id = {ctx.guild.id}")
+
+            if not r:
+                embed = discord.Embed(title="Add Role",
+                                      colour=ctx.author.colour)
+                embed.add_field(name="Member", value=member.display_name, inline=False)
+                embed.add_field(name="Actioned By", value=ctx.author.name, inline=False)
+                embed.timestamp = datetime.utcnow()
+                return await ctx.send(embed=embed, delete_after=10)
+
+            embed = discord.Embed(title="Add Role",
+                                  colour=ctx.author.colour)
+            embed.add_field(name="Member", value=member.display_name, inline=False)
+            embed.add_field(name="Actioned By", value=ctx.author.name, inline=False)
+            embed.timestamp = datetime.utcnow()
+
+            log_channel = self.bot.get_channel(id=r)
+
+            print(log_channel)
+            await ctx.send(embed=embed)
+            return
+
+        await ctx.send(f"{member.mention} already has {role.name}")
 
     @commands.command(name="rrole", description='Removes role to user.')
     async def remove_role(self, ctx, member: discord.Member, *, role: discord.Role):
         if role in member.roles:
             await member.remove_roles(role)
-            await ctx.send(f"{member.mention} has removed role {role.mention}.")
+            r = await self.bot.db.fetchval(f"SELECT channel_id FROM logchannel WHERE guild_id = {ctx.guild.id}")
+
+            if not r:
+                print(r)
+                embed = discord.Embed(title="Remove Role",
+                                      colour=ctx.author.colour)
+                embed.add_field(name="Member", value=member.display_name, inline=False)
+                embed.add_field(name="Actioned By", value=ctx.author.name, inline=False)
+                embed.timestamp = datetime.utcnow()
+                return await ctx.send(embed=embed, delete_after=10)
+
+            embed = discord.Embed(title="Add Role",
+                                  colour=ctx.author.colour)
+            embed.add_field(name="Member", value=member.display_name, inline=False)
+            embed.add_field(name="Actioned By", value=ctx.author.name, inline=False)
+            embed.timestamp = datetime.utcnow()
+            log_channel = self.bot.get_channel(id=r)
+            print(r)
+
+            await log_channel.send(embed=embed)
+
+            return
+        await ctx.send(f"{member.mention} does not have {role.name}")
 
     @lock.error
     async def lock_error(self, ctx, error):

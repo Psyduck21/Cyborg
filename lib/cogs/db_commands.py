@@ -44,7 +44,7 @@ class Ak(commands.Cog):
             await ctx.send(embed=embed)
 
     @commands.command()
-    async def profanity(self, ctx):
+    async def profanityallowed(self, ctx):
         if ctx.guild.id == 740418138075693107:
             result = await self.bot.db.fetch(f"SELECT guild_id, server_name FROM profanity_allowed")
             name = [i[1] for i in result]
@@ -56,7 +56,7 @@ class Ak(commands.Cog):
             await ctx.send(embed=embed)
 
     @commands.command()
-    async def automode(self, ctx):
+    async def automodallowed(self, ctx):
         if ctx.guild.id == 740418138075693107:
             result = await self.bot.db.fetch(f"SELECT guild_id, server_name FROM automoderation")
             name = [i[1] for i in result]
@@ -68,7 +68,7 @@ class Ak(commands.Cog):
             await ctx.send(embed=embed)
 
     @commands.command()
-    async def linksallowed(self, ctx):
+    async def linkmodallowed(self, ctx):
         if ctx.guild.id == 740418138075693107:
             result = await self.bot.db.fetch(f"SELECT guild_id, server_name, channel_id, channel_name FROM links_allowed")
             name = [i[1] for i in result]
@@ -80,6 +80,26 @@ class Ak(commands.Cog):
             embed = discord.Embed(title="Links moderation allowed")
             embed.add_field(name="\u200B", value=f"server name : {name}\nchannel name : {channel}")
             await ctx.send(embed=embed)
+
+    @commands.command()
+    @commands.has_permissions(manage_guild = True)
+    async def profanity(self, ctx):
+        result = await self.bot.db.fetch(f"SELECT guild_id FROM profanity_allowed")
+        ids = [i[0] for i in result]
+        if ctx.guild.id in ids:
+            return await ctx.send("Profanity moderation enabled")
+
+        await ctx.send("Profanity moderation disabled")
+
+    @commands.command()
+    @commands.has_permissions(manage_guild=True)
+    async def linkmod(self, ctx):
+        result = await self.bot.db.fetch(f"SELECT guild_id FROM links_allowed")
+        ids = [i[0] for i in result]
+        if ctx.guild.id in ids:
+            return await ctx.send("Links moderation enabled")
+
+        await ctx.send("Links moderation disabled")
 
 
 def setup(bot):

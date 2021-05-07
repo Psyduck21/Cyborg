@@ -1,6 +1,8 @@
 import discord
 from discord.ext import commands
 import asyncpg
+import dhooks
+from dhooks import Webhook, Embed
 
 db_path = "./data/db/bot_database.sqlite"
 bot = commands.Bot(command_prefix="$", intents=discord.Intents.all())
@@ -42,18 +44,27 @@ bot.color_list = [c for c in bot.colors.values()]
 
 
 async def create_db_pool():
-    bot.db = await asyncpg.create_pool(host=host, database="Cyborg-DB", user="postgres", password=pg)
+    bot.db = await asyncpg.create_pool(host=host, database="postgres", user="postgres", password=pg)
 
 
 # status
 @bot.event
 async def on_ready():
     print("bot is online.")
-    return await bot.change_presence(activity=discord.Activity(type=1, name='$help', url='https://twitch.tv/twitch'))
+    return await bot.change_presence(activity=discord.Activity(type=1, name='$help', url='https://www.spotify.com/us/home/'))
 
 
 # ping
 
+"""if bot.status == "offline":
+        print("Print bot is offline.")
+        hook = Webhook(
+            "https://discord.com/api/webhooks/796664358411304990/QQRNDvywODTRykTPFXHByqYI6Z7a_gg1puj0T39jO8wHWxsJIzNMHqXTtyS7OkEpy5QE")
+        embed = Embed(description='Cyborg is offline',
+                        color=0x5cdbf0,
+                        timestamp='now')
+        hook.send(embed=embed)
+"""
 @bot.command(name='ping', help='This command returns the latency')
 async def ping(ctx):
     await ctx.send(f' Latency: {round(bot.latency * 1000)}ms')
@@ -74,20 +85,27 @@ async def dm_error(ctx, error):
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.MissingRequiredArgument):
-        embed = discord.Embed(description=f"{ctx.message.author.mention} Something is missing in command.",
-                              colour=ctx.author.colour)
-        await ctx.send(embed=embed)
+        embed = discord.Embed(
+            description=f"{ctx.author.mention} Something is missing in command please check",
+            colour=ctx.author.colour)
+        await ctx.send(embed=embed, delete_after=10)
     elif isinstance(error, commands.CommandNotFound):
         embed = discord.Embed(
             description=f"{ctx.author.mention} Invalid Command . Please use **$help** command for valid commands",
             colour=ctx.author.colour)
-        await ctx.send(embed=embed)
-    else:
-        raise error
+        await ctx.send(embed=embed, delete_after=10)
+    elif isinstance(error, commands.MissingPermissions):
+        if isinstance(error, commands.MissingPermissions):
+            embed = discord.Embed(
+                description=f"{ctx.author.mention} :x: You are missing required permission to use this command.",
+                colour=ctx.author.colour)
+            await ctx.send(embed=embed, delete_after=10)
+    """else:
+        raise error"""
 
 
 extensions = [
-    "lib.cogs.setup", 'lib.cogs.welcomeAndLeave', "lib.cogs.db_commands", "lib.cogs.cleaning_chats", "lib.cogs.fun", "lib.cogs.info", "lib.cogs.reactrole", "lib.cogs.help", "lib.cogs.mod", "lib.cogs.levelingsystem",
+    "lib.cogs.funcounting"
 ]
 if __name__ == "__main__":
     for extension in extensions:

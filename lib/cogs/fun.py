@@ -3,6 +3,7 @@ from discord.ext.commands import command, Cog
 from aiohttp import request
 from discord.ext.commands.errors import MissingRequiredArgument
 from aiohttp import ClientSession
+import random
 
 
 class Fun(Cog):
@@ -51,12 +52,21 @@ class Fun(Cog):
     @command(name="meme", description="Sends meme.")
     async def meme(self, ctx):
 
-        image_url = "https://some-random-api.ml/meme"
+        image_url = "https://www.reddit.com/r/IndianDankMemes/hot.json"
 
         async with request("GET", image_url, headers={}) as response:
             if response.status == 200:
                 data = await response.json()
-                await ctx.send(data["image"])
+                data = data['data']
+                children = data['children']
+                post = random.choice(children)['data']
+                title = post['title']
+                url = post['url_overridden_by_dest']
+
+                embed = discord.Embed(title=title, colour=ctx.author.colour)
+                embed.set_image(url=url)
+
+                await ctx.send(embed=embed)
 
     @command(name="joke", description="Sneds dad jokes.")
     async def joke(self, ctx):

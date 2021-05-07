@@ -161,43 +161,62 @@ class Setup(commands.Cog):
     @commands.command()
     @commands.has_permissions(manage_guild=True)
     async def lvlchannel(self, ctx, channel: discord.TextChannel):
-        result = await self.bot.db.fetch(f"SELECT channel_id FROM lvlchannel WHERE guild_id = {ctx.guild.id}")
-        if result is not None:
-            await self.bot.db.execute("INSERT INTO lvlchannel (guild_id, channel_id) VALUES($1,$2)", ctx.guild.id,
-                                      channel.id)
-            return await ctx.send(f"Level channel has been set to {channel.mention}")
+        sent = await ctx.send("Do you want to add or remove lvl channel.(add/remove)")
 
-        await self.bot.db.execute("UPDATE lvlchannel SET channel_id = $1 WHERE guild_id = $2", channel.id, ctx.guild.id)
-        await ctx.send(f"Level channel has been updated to {channel.mention}")
+        def check(msg):
+            return msg.author == ctx.author and msg.channel == ctx.channel and msg.content.lower() in ["add",
+                                                                                                       "remove", "cancel"]
+
+        msg = await self.bot.wait_for("message", check=check)
+        if msg.content.lower() == "add":
+            result = await self.bot.db.fetch(f"SELECT channel_id FROM lvlchannel WHERE guild_id = {ctx.guild.id}")
+            if not result:
+                await self.bot.db.execute("INSERT INTO lvlchannel (guild_id, channel_id) VALUES($1,$2)", ctx.guild.id,
+                                          channel.id)
+                return await ctx.send(f"Level channel has been set to {channel.mention}")
+
+            await self.bot.db.execute("UPDATE lvlchannel SET channel_id = $1 WHERE guild_id = $2", channel.id, ctx.guild.id)
+            await ctx.send(f"Level channel has been updated to {channel.mention}")
+        elif msg.content.lower() == "remove":
+            result = await self.bot.db.fetch(f"SELECT channel_id FROM lvlchannel WHERE guild_id = {ctx.guild.id}")
+            if result:
+                await self.bot.db.execute("DELETE FROM lvlchannel WHERE guild_id =$1", ctx.guild.id)
+                return await ctx.send("lvl channel has been removed")
+
+            await ctx.send("lvl channel is not set in your server.")
+
+        elif msg.content.lower() == "cancel":
+            await sent.delete()
 
     @commands.command()
     @commands.has_permissions(manage_guild=True)
     async def logchannel(self, ctx, channel: discord.TextChannel):
-        result = await self.bot.db.fetch(f"SELECT channel_id FROM logchannel WHERE guild_id = {ctx.guild.id}")
-        if result is not None:
-            await self.bot.db.execute("INSERT INTO logchannel (guild_id, channel_id) VALUES($1,$2)", ctx.guild.id,
-                                      channel.id)
-            return await ctx.send(f"Log channel has been set to {channel.mention}")
+        sent = await ctx.send("Do you want to add or remove log channel.(add/remove)")
 
-        await self.bot.db.fecthrow("UPDATE logchannel SET channel_id = $1 WHERE guild_id = $2", channel.id,
-                                   ctx.guild.id)
-        await ctx.send(f"Log channel has been updated to {channel.mention}")
+        def check(msg):
+            return msg.author == ctx.author and msg.channel == ctx.channel and msg.content.lower() in ["add",
+                                                                                                       "remove",
+                                                                                                       "cancel"]
 
-    @commands.command()
-    @commands.has_permissions(manage_guild=True)
-    async def rlogchannel(self, ctx):
-        result = await self.bot.db.fetch(f"SELECT channel_id FROM logchannel WHERE guild_id = {ctx.guild.id}")
-        if result:
-            await self.bot.db.execute("DELETE FROM logchannel WHERE guild_id =$1", ctx.guild.id)
-            return await ctx.send("Log channel has been removed")
+        msg = await self.bot.wait_for("message", check=check)
+        if msg.content.lower() == "add":
+            result = await self.bot.db.fetch(f"SELECT channel_id FROM logchannel WHERE guild_id = {ctx.guild.id}")
+            if not result:
+                await self.bot.db.execute("INSERT INTO logchannel (guild_id, channel_id) VALUES($1,$2)", ctx.guild.id,
+                                          channel.id)
+                return await ctx.send(f"Log channel has been set to {channel.mention}")
 
-    @commands.command()
-    @commands.has_permissions(manage_guild=True)
-    async def rlvlchannel(self, ctx):
-        result = await self.bot.db.fetch(f"SELECT channel_id FROM lvlchannel WHERE guild_id = {ctx.guild.id}")
-        if result:
-            await self.bot.db.execute("DELETE FROM lvlchannel WHERE guild_id =$1", ctx.guild.id)
-            return await ctx.send("lvl channel has been removed")
+            await self.bot.db.fetchrow("UPDATE logchannel SET channel_id = $1 WHERE guild_id = $2", channel.id, ctx.guild.id)
+            await ctx.send(f"Log channel has been updated to {channel.mention}")
+        elif msg.content.lower() == "remove":
+            result = await self.bot.db.fetch(f"SELECT channel_id FROM logchannel WHERE guild_id = {ctx.guild.id}")
+            if result:
+                await self.bot.db.execute("DELETE FROM logchannel WHERE guild_id =$1", ctx.guild.id)
+                return await ctx.send("Log channel has been removed")
+            await ctx.send("Log channel is not set in your server.")
+
+        elif msg.content.lower() == "cancel":
+            await sent.delete()
 
     @commands.command(name="automod")
     @commands.has_permissions(manage_guild=True)
@@ -222,6 +241,22 @@ class Setup(commands.Cog):
             await sent.delete()
 
     @automod_.error
+    async def automod_error(self, ctx, error):
+        if isinstance(error, commands.MissingPermissions):
+            embed = discord.Embed(
+                description=f"{ctx.author.mention} :x: You need `Manage_server` permission to use this command.",
+                colour=ctx.author.colour)
+            await ctx.send(embed=embed)
+
+    @logchannel.error
+    async def automod_error(self, ctx, error):
+        if isinstance(error, commands.MissingPermissions):
+            embed = discord.Embed(
+                description=f"{ctx.author.mention} :x: You need `Manage_server` permission to use this command.",
+                colour=ctx.author.colour)
+            await ctx.send(embed=embed)
+
+    @lvlchannel.error
     async def automod_error(self, ctx, error):
         if isinstance(error, commands.MissingPermissions):
             embed = discord.Embed(
