@@ -10,6 +10,7 @@ class Level(commands.Cog):
         self.bot = bot
 
     @commands.Cog.listener()
+    @commands.guild_only()
     async def on_message(self, message: discord.Message):
         result = await self.bot.db.fetch("SELECT lvl FROM allowed")
         allowed_leveling = [i[0] for i in result]
@@ -52,15 +53,15 @@ class Level(commands.Cog):
 
                     if not r:
                         await message.channel.send(f"{message.author.mention} has leveled up. Now level *{lvl}*")
-                        print('LEVEL UP')
+                        
                     else:
                         await channel.send(f"{message.author.mention} has leveled up. Now level *{lvl}*")
-                        print('LEVEL UP')
+                        
 
                     r = await self.bot.db.fetchrow('SELECT lvl from users WHERE userid = $1 and guild_id = $2',
                                                    message.author.id, message.guild.id)
                     lvlnum = r[0]
-                    print(lvlnum)
+                    
                     if lvlnum == 5:
                         await message.author.add_roles(
                                 discord.utils.get(message.author.guild.roles, name=f"level 5+"))
@@ -95,12 +96,13 @@ class Level(commands.Cog):
             await ctx.send(embed=embed)
         else:
             level = result[3]
-            # cursor.execute("SELECT Count(*) from users xp < ? where guild_id = ? ", (xp, ))
+            """rank = await self.bot.db.fetch("SELECT Count(*) from users xp < where guild_id = $2 ", ctx.guild.id)
+            print(rank)"""
             embed = discord.Embed(title=f"{member.display_name}'s stats", colour=ctx.author.colour)
             embed.add_field(name="Name", value=member.mention, inline=True)
             embed.add_field(name="XP", value=result[2], inline=True)
             embed.add_field(name="Level", value=level, inline=True)
-            embed.set_thumbnail(url=ctx.author.avatar_url)
+            embed.set_thumbnail(url=member.avatar_url)
             embed.set_footer(
                 text=f" Requested by {ctx.author}", icon_url=ctx.author.avatar_url)
             embed.timestamp = datetime.datetime.utcnow()

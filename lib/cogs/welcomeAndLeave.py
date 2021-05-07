@@ -40,16 +40,16 @@ class Welcome(commands.Cog):
     @commands.Cog.listener()
     async def on_member_join(self, member):
 
-        result = await self.bot.db.fecth("SELECT welcome FROM wallowed")
+        result = await self.bot.db.fetch("SELECT welcome FROM wallowed")
         allowed_welcome = [i[0] for i in result]
         print(allowed_welcome)
         if member.guild.id in allowed_welcome:
-            result = await self.bot.db.fecth("SELECT welcome_channel FROM welcome WHERE guild_id =$1", member.guild.id)
+            result = await self.bot.db.fetch("SELECT welcome_channel FROM welcome WHERE guild_id =$1", member.guild.id)
             if result is None:
                 return
 
             else:
-                result1 = await self.bot.db.fecth(f"SELECT message FROM welcome WHERE guild_id = {member.guild.id}")
+                result1 = await self.bot.db.fetch(f"SELECT message FROM welcome WHERE guild_id = {member.guild.id}")
                 channel = self.bot.get_channel(id=int(result['welcome_channel']))
                 embed = discord.Embed(colour=random.choice(self.bot.color_list), timestamp=datetime.datetime.utcnow())
 
@@ -69,6 +69,7 @@ class Welcome(commands.Cog):
                 await channel.send(embed=embed)
 
     @commands.group(invoke_without_command=True)
+    @commands.has_permissions(manage_guild=True)
     async def welcome(self, ctx):
         await ctx.send(
             "Available Setup commands :\n Welcome wchannel <#channel>\n Welcome message <message>\n "
@@ -98,11 +99,11 @@ class Welcome(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_remove(self, member):
-        result = await self.bot.db.fecth("SELECT leave FROM lallowed")
+        result = await self.bot.db.fetch("SELECT leave FROM lallowed")
         allowed_leave = [i[0] for i in result]
         print(allowed_leave)
         if member.guild.id in allowed_leave:
-            result = await self.bot.db.fecth(f"SELECT leave_channel FROM leave WHERE guild_id = {member.guild.id}")
+            result = await self.bot.db.fetch(f"SELECT leave_channel FROM leave WHERE guild_id = {member.guild.id}")
             if result is None:
                 return
 
@@ -119,15 +120,16 @@ class Welcome(commands.Cog):
                 await channel.send(embed=embed)
 
     @commands.group(invoke_without_command=True)
-    async def leave(self, ctx):
+    @commands.has_permissions(manage_guild=True)
+    async def remove(self, ctx):
         await ctx.send(
             "Available Setup commands :\n leave channel <#channel>\n "
             "*Ignore `< >` in commands.*")
 
-    @leave.command()
+    @remove.command()
     @commands.has_permissions(manage_guild=True)
     async def lchannel(self, ctx, channel: discord.TextChannel):
-        result = await self.bot.db.fecth("SELECT leave_channel FROM leave WHERE guild_id = $1", ctx.guild.id)
+        result = await self.bot.db.fetch("SELECT leave_channel FROM leave WHERE guild_id = $1", ctx.guild.id)
         if not result:
             await self.bot.db.execute("INSERT INTO leave (guild_id, leave_channel) VALUES(?,?)", ctx.guild.id,
                                       channel.id)
@@ -135,6 +137,22 @@ class Welcome(commands.Cog):
 
         await self.bot.db.execute("UPDATE leave SET leave_channel = $1 WHERE guild_id = $2", channel.id, ctx.guild.id)
         await ctx.send(f"leave channel has been updated to {channel.mention}")
+
+    @remove.error
+    async def leave_error(self, ctx, error):
+        if isinstance(error, commands.MissingPermissions):
+            embed = discord.Embed(
+                description=f"{ctx.message.author.mention} :x: You need `Ban_Member` permission to use this command.",
+                colour=ctx.author.colour)
+            await ctx.send(embed=embed, delete_after=10)
+
+    @welcome.error
+    async def leave_error(self, ctx, error):
+        if isinstance(error, commands.MissingPermissions):
+            embed = discord.Embed(
+                description=f"{ctx.message.author.mention} :x: You need `Ban_Member` permission to use this command.",
+                colour=ctx.author.colour)
+            await ctx.send(embed=embed, delete_after=10)
 
 
 def setup(bot):

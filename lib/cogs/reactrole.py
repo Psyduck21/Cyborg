@@ -4,9 +4,6 @@ from discord.ext.commands import MissingRequiredArgument, MissingPermissions
 import json
 import random
 import datetime
-
-db_path = "./data/db/bot_database.sqlite"
-
 from discord import Embed
 
 numbers = ("1️⃣", "2⃣", "3⃣", "4⃣", "5⃣",
@@ -46,7 +43,7 @@ class Reactrole(commands.Cog):
 
                     await self.client.get_guild(payload.guild_id).get_member(payload.user_id).remove_roles(role)
 
-    @commands.command(name="poll", description="Used for quick polls")
+    @commands.command(aliases=["quickpoll"], description="Used for quick polls")
     async def poll(self, ctx, *, message):
         emb = discord.Embed(title="**POLL**",
                             description=f"{message}",
@@ -56,7 +53,7 @@ class Reactrole(commands.Cog):
         await msg.add_reaction('👍')
         await msg.add_reaction('👎')
 
-    @commands.command()
+    @commands.command(aliases=['rr'], description="This is the reaction role command.")
     @commands.has_permissions(manage_roles=True)
     async def reactrole(self, ctx, emoji, role: discord.Role, *, message):
 
